@@ -33,12 +33,14 @@ struct uthread {
     enum sched_priority priority;       // scheduling priority
 };
 
+
 extern void uswtch(struct context*, struct context*);
 
 int uthread_create(void (*start_func)(), enum sched_priority priority);
 
 void uthread_yield();
 void uthread_exit();
+int transfer_control();
 
 int uthread_start_all();
 enum sched_priority uthread_set_priority(enum sched_priority priority);
