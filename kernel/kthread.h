@@ -1,9 +1,8 @@
-
 enum threadstate { UNUSED, USED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
 // Per-CPU state.
 struct cpu {
-  struct kthread *thread;          // The process running on this cpu, or null.
+  struct kthread *thread;          // The thread running on this cpu, or null.
   struct context context;     // swtch() here to enter scheduler().
   int noff;                   // Depth of push_off() nesting.
   int intena;                 // Were interrupts enabled before push_off()?
@@ -25,7 +24,7 @@ extern struct cpu cpus[NCPU];
 // the entire kernel call stack.
 struct trapframe {
   /*   0 */ uint64 kernel_satp;   // kernel page table
-  /*   8 */ uint64 kernel_sp;     // top of process's kernel stack
+  /*   8 */ uint64 kernel_sp;     // top of thread's kernel stack
   /*  16 */ uint64 kernel_trap;   // usertrap()
   /*  24 */ uint64 epc;           // saved user program counter
   /*  32 */ uint64 kernel_hartid; // saved kernel tp
@@ -71,7 +70,7 @@ struct kthread
   int killed;                  // If non-zero, have been killed
   int xstate;                  // Exit status to be returned to parent's wait
   int tid;                     // Thread ID
-  struct proc *proc;         // Parent process
+  struct proc *proc;         // thread process
   struct trapframe *trapframe;  // data page for trampoline.S
   struct context context;      // swtch() here to run process
 };

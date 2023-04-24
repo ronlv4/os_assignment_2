@@ -124,6 +124,8 @@ allocproc(void)
   return 0;
 
 found:
+  p->next_tid = 1;
+  p->kthread[0] = *allocthread(p);
   p->pid = allocpid();
   p->state = USED;
 
@@ -142,16 +144,12 @@ found:
     return 0;
   }
 
+  // // Set up new context to start executing at forkret,
+  // // which returns to user space.
+  // memset(&p->context, 0, sizeof(p->context));
+  // p->context.ra = (uint64)forkret;
+  // p->context.sp = p->kstack + PGSIZE;
 
-  // Set up new context to start executing at forkret,
-  // which returns to user space.
-  memset(&p->context, 0, sizeof(p->context));
-  p->context.ra = (uint64)forkret;
-  p->context.sp = p->kstack + PGSIZE;
-
-
-  // TODO: delte this after you are done with task 2.2
-  allocproc_help_function(p);
   return p;
 }
 
@@ -161,20 +159,27 @@ found:
 static void
 freeproc(struct proc *p)
 {
+  struct kthread *kt;
+
   if(p->base_trapframes)
     kfree((void*)p->base_trapframes);
   p->base_trapframes = 0;
   if(p->pagetable)
     proc_freepagetable(p->pagetable, p->sz);
-  p->pagetable = 0;
-  p->sz = 0;
-  p->pid = 0;
-  p->parent = 0;
-  p->name[0] = 0;
-  p->chan = 0;
+
+  for(kt = p->kthread; kt < &p->kthread[NKT]; kt++) {
+    freethread(kt);
+  }
+
+  p->next_tid = 0;
+  p->state = UNUSED;
   p->killed = 0;
   p->xstate = 0;
-  p->state = UNUSED;
+  p->pid = 0;
+  p->parent = 0;
+  p->sz = 0;
+  p->pagetable = 0;
+  p->name[0] = 0;
 }
 
 // Create a user page table for a given process, with no user memory,
@@ -256,7 +261,9 @@ userinit(void)
   p->cwd = namei("/");
 
   p->state = RUNNABLE;
+  p->kthread[0].tstate = RUNNABLE;
 
+  release(&p->kthread->lock);
   release(&p->lock);
 }
 
@@ -326,7 +333,10 @@ fork(void)
   release(&wait_lock);
 
   acquire(&np->lock);
-  np->state = RUNNABLE;
+  acquire(&np->kthread[0].lock);
+  np->state = USED;
+  np->kthread[0].tstate = RUNNABLE;
+  release(&np->kthread[0].lock);
   release(&np->lock);
 
   return pid;

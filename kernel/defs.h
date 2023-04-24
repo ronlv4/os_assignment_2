@@ -110,6 +110,11 @@ void            procdump(void);
 // kthread.c
 void                kthreadinit(struct proc *);
 struct kthread*     mykthread();
+struct kthread*     allocthread(struct proc *);
+void                freethread(struct kthread *);
+int                 alloctid(struct proc *);
+struct trapframe*   get_kthread_trapframe(struct proc *, struct kthread *);
+
 
 // TODO: delte this after you are done with task 2.2
 void allocproc_help_function(struct proc *p);

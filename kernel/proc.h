@@ -20,14 +20,14 @@ struct context {
   uint64 s11;
 };
 
-enum procstate { UNUSED, USED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
+enum procstate { UNUSED, USED, ZOMBIE };
 
 // Per-process state
 struct proc {
   struct spinlock lock;
 
   int next_tid;
-  struct spinlock pid_lock;
+  struct spinlock tid_lock;
 
   // p->lock must be held when using these:
   enum procstate state;        // Process state
