@@ -1,4 +1,16 @@
 
+enum threadstate { UNUSED, USED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
+
+// Per-CPU state.
+struct cpu {
+  struct kthread *thread;          // The process running on this cpu, or null.
+  struct context context;     // swtch() here to enter scheduler().
+  int noff;                   // Depth of push_off() nesting.
+  int intena;                 // Were interrupts enabled before push_off()?
+};
+
+extern struct cpu cpus[NCPU];
+
 // per-process data for the trap handling code in trampoline.S.
 // sits in a page by itself just under the trampoline page in the
 // user page table. not specially mapped in the kernel page table.
@@ -52,8 +64,14 @@ struct trapframe {
 
 struct kthread
 {
-
+  struct spinlock lock;
   uint64 kstack;                // Virtual address of kernel stack
-
+  enum threadstate tstate;        // Thread state
+  void *chan;                  // If non-zero, sleeping on chan
+  int killed;                  // If non-zero, have been killed
+  int xstate;                  // Exit status to be returned to parent's wait
+  int tid;                     // Thread ID
+  struct proc *proc;         // Parent process
   struct trapframe *trapframe;  // data page for trampoline.S
+  struct context context;      // swtch() here to run process
 };
