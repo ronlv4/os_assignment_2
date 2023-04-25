@@ -114,6 +114,8 @@ struct kthread*     allocthread(struct proc *);
 void                freethread(struct kthread *);
 int                 alloctid(struct proc *);
 struct trapframe*   get_kthread_trapframe(struct proc *, struct kthread *);
+int                 wakeup_all_threads(struct proc *);
+int                 exit_threads(struct proc *, int);
 
 
 // TODO: delte this after you are done with task 2.2

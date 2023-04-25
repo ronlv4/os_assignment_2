@@ -3,6 +3,7 @@
 #include "memlayout.h"
 #include "riscv.h"
 #include "spinlock.h"
+#include "kthread.h"
 #include "proc.h"
 #include "defs.h"
 
@@ -74,6 +75,7 @@ found:
 // kt->lock must be held.
 static void freethread(struct kthread *kt)
 {
+  acquire(&kt->lock);
   if(kt->trapframe)
     kfree((void*)kt->trapframe);
   kt->trapframe = 0;
@@ -83,6 +85,7 @@ static void freethread(struct kthread *kt)
   kt->xstate = 0;
   kt->tid = 0;
   kt->proc = 0;
+  release(&kt->lock);
 }
 
 int alloctid(struct proc *p)
@@ -102,9 +105,32 @@ struct trapframe *get_kthread_trapframe(struct proc *p, struct kthread *kt)
   return p->base_trapframes + ((int)(kt - p->kthread));
 }
 
-// TODO: delte this after you are done with task 2.2
-void allocproc_help_function(struct proc *p) {
-  p->kthread->trapframe = get_kthread_trapframe(p, p->kthread);
+int wakeup_all_threads(struct proc *p)
+{
+  for (struct kthread *kt = p->kthread; kt < &p->kthread[NKT]; kt++)
+  {
+    acquire(&kt->lock);
+    kt->killed = 1;
+    if (kt->tstate == SLEEPING)
+    {
+      kt->tstate = RUNNABLE;
+    }
+    release(&kt->lock);
+  }
+  return 0;
+}
 
-  p->context.sp = p->kthread->kstack + PGSIZE;
+// calling thread holding lock
+int exit_threads(struct proc *p, int status)
+{
+  for (struct kthread *kt = p->kthread; kt < &p->kthread[NKT]; kt++)
+  {
+    if (kt != mykthread())
+    {
+      acquire(&kt->lock);
+      kt->xstate = status;
+      kt->tstate = ZOMBIE;
+      release(&kt->lock);
+    }
+  }
 }
