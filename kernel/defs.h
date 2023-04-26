@@ -3,6 +3,7 @@ struct context;
 struct file;
 struct inode;
 struct pipe;
+struct kthread;
 struct proc;
 struct spinlock;
 struct sleeplock;
@@ -117,9 +118,6 @@ struct trapframe*   get_kthread_trapframe(struct proc *, struct kthread *);
 int                 wakeup_all_threads(struct proc *);
 int                 exit_threads(struct proc *, int);
 
-
-// TODO: delte this after you are done with task 2.2
-void allocproc_help_function(struct proc *p);
 
 // swtch.S
 void            swtch(struct context*, struct context*);

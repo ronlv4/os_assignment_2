@@ -3,7 +3,6 @@
 #include "memlayout.h"
 #include "riscv.h"
 #include "spinlock.h"
-#include "kthread.h"
 #include "proc.h"
 #include "defs.h"
 
@@ -30,7 +29,11 @@ void kthreadinit(struct proc *p)
 
 struct kthread *mykthread()
 {
-  return mycpu()->thread;
+  push_off();
+  struct cpu *c = mycpu();
+  struct kthread *kt = c->thread;
+  pop_off();
+  return kt;
 }
 
 // Look in the process table for an UNUSED proc.
