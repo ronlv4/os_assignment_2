@@ -58,7 +58,7 @@ sys_sleep(void)
   acquire(&tickslock);
   ticks0 = ticks;
   while(ticks - ticks0 < n){
-    if(killed(myproc())){
+    if(killed(myproc()) || kthread_killed(mykthread())){
       release(&tickslock);
       return -1;
     }
@@ -77,6 +77,42 @@ sys_kill(void)
   return kill(pid);
 }
 
+uint64 sys_kthread_create(void)
+{
+
+}
+
+uint64 sys_kthread_id(void)
+{
+  return mykthread()->tid;
+}
+
+uint64 sys_kthread_kill(void)
+{
+  int ktid;
+
+  argint(0, &ktid);
+  return kthread_kill(ktid);
+}
+
+uint64 sys_kthread_exit(void)
+{
+  int n;
+  argint(0, &n);
+  kthread_exit(n);
+  return 0;  // not reached
+}
+
+uint64 sys_kthread_join(void)
+{
+  int ktid;
+  uint64 p;
+
+  argint(0, &ktid);
+  argaddr(1, &p);
+
+  return kthread_join(p);
+}
 // return how many clock tick interrupts have occurred
 // since start.
 uint64

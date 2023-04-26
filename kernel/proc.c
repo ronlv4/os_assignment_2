@@ -404,6 +404,11 @@ exit(int status)
   panic("zombie exit");
 }
 
+int kthread_exit(int ktid)
+{
+
+}
+
 // Wait for a child process to exit and return its pid.
 // Return -1 if this process has no children.
 int
@@ -638,12 +643,45 @@ kill(int pid)
   return -1;
 }
 
+int kthread_kill(int ktid)
+{
+  struct proc *p = myproc();
+  struct kthread *kt;
+
+  acquire(&p->lock);
+  for (kt = proc->kthread; kt < &proc->kthread[NKT]; kt++)
+  {
+    acquire(&kt->lock);
+    if (kt->tid == ktid)
+    {
+      kt->killed = 1;
+      if (kt->tstate == SLEEPING)
+      {
+        kt->tstate = RUNNABLE;
+      }
+      return 0;
+    }
+    release(&kt->lock);
+  }
+  release(&p->lock);
+  return -1; // no matching tid found within process
+}
+
 void
 setkilled(struct proc *p)
 {
   acquire(&p->lock);
   p->killed = 1;
   release(&p->lock);
+}
+
+void setkthreadkilled(struct kthread *kt)
+{
+  acquire(&kt->proc->lock);
+  acquire(&kt->lock);
+  kt->killed = 1;
+  release(&kt->lock);
+  release(&kt->proc->lock);
 }
 
 int
@@ -654,6 +692,18 @@ killed(struct proc *p)
   acquire(&p->lock);
   k = p->killed;
   release(&p->lock);
+  return k;
+}
+
+int kthread_killed(struct kthread *kt)
+{
+  int k;
+  
+  acquire(&kt->proc->lock);
+  acquire(&kt->lock);
+  k = kt->killed;
+  release(&kt->lock);
+  release(&kt->proc->lock);
   return k;
 }
 

@@ -55,6 +55,9 @@ usertrap(void)
 
     if(killed(p))
       exit(-1);
+    
+    if (kthread_killed(kt))
+      kthread_exit(-1);
 
     // sepc points to the ecall instruction,
     // but we want to return to the next instruction.
@@ -71,6 +74,7 @@ usertrap(void)
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
     setkilled(p);
+    setkthreadkilled(kt);
   }
 
   if(killed(p))
