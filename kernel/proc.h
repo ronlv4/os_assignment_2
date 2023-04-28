@@ -1,6 +1,6 @@
 #include "kthread.h"
 
-enum procstate { UNUSED, USED, ZOMBIE };
+enum procstate { UNUSEDPROC, USEDPROC, ZOMBIEPROC };
 
 // Per-process state
 struct proc {

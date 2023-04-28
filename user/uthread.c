@@ -18,6 +18,7 @@ int uthread_create(void (*start_func)(), enum sched_priority priority)
       t->context.ra = start_func;
       t->context.sp = t->ustack;
   }
+  return 0;
 }
 
 void uthread_yield()
@@ -32,7 +33,10 @@ void uthread_yield()
 // context switch
 // min accumulator
 // accumulator update
-int transfer_control();
+int transfer_control()
+{
+    return 0;
+}
 
 void uthread_exit()
 {
@@ -46,7 +50,10 @@ void uthread_exit()
     transfer_control();
 }
 
-int uthread_start_all();
+int uthread_start_all()
+{
+    return 0;
+}
 
 
 enum sched_priority uthread_set_priority(enum sched_priority priority)

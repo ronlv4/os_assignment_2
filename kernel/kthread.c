@@ -8,7 +8,6 @@
 
 extern struct proc proc[NPROC];
 extern void forkret(void);
-static void freethread(struct kthread *kt);
 
 
 void kthreadinit(struct proc *p)
@@ -40,7 +39,7 @@ struct kthread *mykthread()
 // If found, initialize state required to run in the kernel,
 // and return with p->lock held.
 // If there are no free procs, or a memory allocation fails, return 0.
-static struct kthread* allocthread(struct proc *p)
+struct kthread* allocthread(struct proc *p)
 {
   struct kthread *kt;
 
@@ -60,7 +59,7 @@ found:
 
   // Allocate a trapframe page.
   if((kt->trapframe = (struct trapframe *)kalloc()) == 0){
-    freethread(p);
+    freethread(kt);
     release(&kt->lock);
     return 0;
   }
@@ -71,12 +70,12 @@ found:
   kt->context.ra = (uint64)forkret;
   kt->context.sp = get_kthread_trapframe(p, kt)->kernel_sp;
 
-  return p;
+  return kt;
 }
 
 // free a kthread structure and the data hanging from it,
 // kt->lock must be held.
-static void freethread(struct kthread *kt)
+void freethread(struct kthread *kt)
 {
   acquire(&kt->lock);
   if(kt->trapframe)
@@ -108,6 +107,37 @@ struct trapframe *get_kthread_trapframe(struct proc *p, struct kthread *kt)
   return p->base_trapframes + ((int)(kt - p->kthread));
 }
 
+int kthread_exit(int status)
+{
+  struct proc *p = myproc();
+  struct kthread *kt;
+
+  int found_alive = 0;
+
+  acquire(&p->lock);
+  for (kt = p->kthread; kt < &p->kthread[NKT]; kt++)
+  {
+    acquire(&kt->lock);
+    if (kt != mykthread() && kt->tstate != ZOMBIE)
+    {
+      found_alive = 1;
+    }
+    release(&kt->lock);
+  }
+
+  if (!found_alive)
+  {
+    exit(status); // never to return
+  }
+
+  acquire(&kt->lock);
+  kt->xstate = status;
+  kt->tstate = ZOMBIE;
+  release(&kt->lock);
+
+  return 0;
+}
+
 int wakeup_all_threads(struct proc *p)
 {
   for (struct kthread *kt = p->kthread; kt < &p->kthread[NKT]; kt++)
@@ -123,6 +153,51 @@ int wakeup_all_threads(struct proc *p)
   return 0;
 }
 
+int kthread_kill(int ktid)
+{
+  struct proc *p = myproc();
+  struct kthread *kt;
+
+  acquire(&p->lock);
+  for (kt = p->kthread; kt < &p->kthread[NKT]; kt++)
+  {
+    acquire(&kt->lock);
+    if (kt->tid == ktid)
+    {
+      kt->killed = 1;
+      if (kt->tstate == SLEEPING)
+      {
+        kt->tstate = RUNNABLE;
+      }
+      return 0;
+    }
+    release(&kt->lock);
+  }
+  release(&p->lock);
+  return -1; // no matching tid found within process
+}
+
+int kthread_killed(struct kthread *kt)
+{
+  int k;
+  
+  acquire(&kt->proc->lock);
+  acquire(&kt->lock);
+  k = kt->killed;
+  release(&kt->lock);
+  release(&kt->proc->lock);
+  return k;
+}
+
+void setkthreadkilled(struct kthread *kt)
+{
+  acquire(&kt->proc->lock);
+  acquire(&kt->lock);
+  kt->killed = 1;
+  release(&kt->lock);
+  release(&kt->proc->lock);
+}
+
 // calling thread holding lock
 int exit_threads(struct proc *p, int status)
 {
@@ -136,4 +211,10 @@ int exit_threads(struct proc *p, int status)
       release(&kt->lock);
     }
   }
+  return 0;
+}
+
+int kthread_join(uint64 addr)
+{
+  return 0;
 }

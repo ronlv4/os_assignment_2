@@ -123,6 +123,10 @@ UPROGS=\
 	$U/_grep\
 	$U/_init\
 	$U/_kill\
+	$U/_kthread_create\
+	$U/_kthread_exit\
+	$U/_kthread_join\
+	$U/_kthread_kill\
 	$U/_ln\
 	$U/_ls\
 	$U/_mkdir\

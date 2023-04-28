@@ -55,7 +55,7 @@ procinit(void)
   initlock(&wait_lock, "wait_lock");
   for(p = proc; p < &proc[NPROC]; p++) {
       initlock(&p->lock, "proc");
-      p->state = UNUSED;
+      p->state = UNUSEDPROC;
       kthreadinit(p);
   }
 }
@@ -115,7 +115,7 @@ allocproc(void)
 
   for(p = proc; p < &proc[NPROC]; p++) {
     acquire(&p->lock);
-    if(p->state == UNUSED) {
+    if(p->state == UNUSEDPROC) {
       goto found;
     } else {
       release(&p->lock);
@@ -127,7 +127,7 @@ found:
   p->next_tid = 1;
   p->kthread[0] = *allocthread(p);
   p->pid = allocpid();
-  p->state = USED;
+  p->state = USEDPROC;
 
   // Allocate a trapframe page.
   if((p->base_trapframes = (struct trapframe *)kalloc()) == 0){
@@ -172,7 +172,7 @@ freeproc(struct proc *p)
   }
 
   p->next_tid = 0;
-  p->state = UNUSED;
+  p->state = UNUSEDPROC;
   p->killed = 0;
   p->xstate = 0;
   p->pid = 0;
@@ -392,7 +392,7 @@ exit(int status)
   acquire(&p->lock);
   acquire(&kt->lock);
   p->xstate = status;
-  p->state = ZOMBIE;
+  p->state = ZOMBIEPROC;
   kt->xstate = status;
   kt->tstate = ZOMBIE;
   exit_threads(p, status);
@@ -402,11 +402,6 @@ exit(int status)
   // Jump into the scheduler, never to return.
   sched();
   panic("zombie exit");
-}
-
-int kthread_exit(int ktid)
-{
-
 }
 
 // Wait for a child process to exit and return its pid.
@@ -429,7 +424,7 @@ wait(uint64 addr)
         acquire(&pp->lock);
 
         havekids = 1;
-        if(pp->state == ZOMBIE){
+        if(pp->state == ZOMBIEPROC){
           // Found one.
           pid = pp->pid;
           if(addr != 0 && copyout(p->pagetable, addr, (char *)&pp->xstate,
@@ -643,45 +638,12 @@ kill(int pid)
   return -1;
 }
 
-int kthread_kill(int ktid)
-{
-  struct proc *p = myproc();
-  struct kthread *kt;
-
-  acquire(&p->lock);
-  for (kt = proc->kthread; kt < &proc->kthread[NKT]; kt++)
-  {
-    acquire(&kt->lock);
-    if (kt->tid == ktid)
-    {
-      kt->killed = 1;
-      if (kt->tstate == SLEEPING)
-      {
-        kt->tstate = RUNNABLE;
-      }
-      return 0;
-    }
-    release(&kt->lock);
-  }
-  release(&p->lock);
-  return -1; // no matching tid found within process
-}
-
 void
 setkilled(struct proc *p)
 {
   acquire(&p->lock);
   p->killed = 1;
   release(&p->lock);
-}
-
-void setkthreadkilled(struct kthread *kt)
-{
-  acquire(&kt->proc->lock);
-  acquire(&kt->lock);
-  kt->killed = 1;
-  release(&kt->lock);
-  release(&kt->proc->lock);
 }
 
 int
@@ -692,18 +654,6 @@ killed(struct proc *p)
   acquire(&p->lock);
   k = p->killed;
   release(&p->lock);
-  return k;
-}
-
-int kthread_killed(struct kthread *kt)
-{
-  int k;
-  
-  acquire(&kt->proc->lock);
-  acquire(&kt->lock);
-  k = kt->killed;
-  release(&kt->lock);
-  release(&kt->proc->lock);
   return k;
 }
 
@@ -744,16 +694,16 @@ void
 procdump(void)
 {
   static char *states[] = {
-  [UNUSED]    "unused",
-  [USED]      "used",
-  [ZOMBIE]    "zombie"
+  [UNUSEDPROC]    "unused",
+  [USEDPROC]      "used",
+  [ZOMBIEPROC]    "zombie"
   };
   struct proc *p;
   char *state;
 
   printf("\n");
   for(p = proc; p < &proc[NPROC]; p++){
-    if(p->state == UNUSED)
+    if(p->state == UNUSEDPROC)
       continue;
     if(p->state >= 0 && p->state < NELEM(states) && states[p->state])
       state = states[p->state];

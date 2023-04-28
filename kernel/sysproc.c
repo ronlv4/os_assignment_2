@@ -79,7 +79,7 @@ sys_kill(void)
 
 uint64 sys_kthread_create(void)
 {
-
+  return 0;
 }
 
 uint64 sys_kthread_id(void)
@@ -113,6 +113,7 @@ uint64 sys_kthread_join(void)
 
   return kthread_join(p);
 }
+
 // return how many clock tick interrupts have occurred
 // since start.
 uint64
