@@ -1,5 +1,6 @@
-#include "user/uthread.h"
+#include "kernel/types.h"
 #include "user/user.h"
+#include "user/uthread.h"
 
 struct uthread uthreads[MAX_UTHREADS];
 
@@ -11,14 +12,17 @@ int thread_count = 0;
 int uthread_create(void (*start_func)(), enum sched_priority priority)
 {
     struct uthread *t;
-    for(t = uthreads; t < &uthreads[MAX_UTHREADS]; t++) {
-      // initlock(&p->lock, "proc");
-      t->state = FREE;
-      // maybe init ustack to t pointer
-      t->context.ra = start_func;
-      t->context.sp = t->ustack;
-  }
-  return 0;
+    
+    for (t = uthreads; t < &uthreads[MAX_UTHREADS]; t++)
+    {
+        t->state = FREE;
+        t->priority = priority;
+
+        t->context.ra = (uint64)start_func;
+        t->context.sp = (uint64)t->ustack + STACK_SIZE;
+    }
+
+    return 0;
 }
 
 void uthread_yield()
