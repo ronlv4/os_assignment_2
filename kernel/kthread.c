@@ -35,10 +35,10 @@ struct kthread *mykthread()
   return kt;
 }
 
-// Look in the process table for an UNUSED proc.
+// Look in the kthread table for an UNUSED kthread.
 // If found, initialize state required to run in the kernel,
-// and return with p->lock held.
-// If there are no free procs, or a memory allocation fails, return 0.
+// and return with kt->lock held.
+// If there are no free kthreads, or a memory allocation fails, return 0.
 struct kthread* allocthread(struct proc *p)
 {
   struct kthread *kt;
@@ -77,8 +77,6 @@ found:
 // kt->lock must be held.
 void freethread(struct kthread *kt)
 {
-  if(kt->trapframe)
-    kfree((void*)kt->trapframe);
   kt->trapframe = 0;
   kt->tstate = UNUSED;
   kt->chan = 0;
