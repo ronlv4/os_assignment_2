@@ -68,7 +68,7 @@ found:
   // which returns to user space.
   memset(&kt->context, 0, sizeof(kt->context));
   kt->context.ra = (uint64)forkret;
-  kt->context.sp = get_kthread_trapframe(p, kt)->kernel_sp;
+  kt->context.sp = kt->kstack + PGSIZE;
 
   return kt;
 }
@@ -77,7 +77,6 @@ found:
 // kt->lock must be held.
 void freethread(struct kthread *kt)
 {
-  acquire(&kt->lock);
   if(kt->trapframe)
     kfree((void*)kt->trapframe);
   kt->trapframe = 0;
@@ -87,7 +86,6 @@ void freethread(struct kthread *kt)
   kt->xstate = 0;
   kt->tid = 0;
   kt->proc = 0;
-  release(&kt->lock);
 }
 
 int alloctid(struct proc *p)

@@ -81,8 +81,7 @@ mycpu(void)
 }
 
 // Return the current struct proc *, or zero if none.
-struct proc*
-myproc(void)
+struct proc* myproc(void)
 {
   push_off();
   struct cpu *c = mycpu();
@@ -125,9 +124,17 @@ allocproc(void)
 
 found:
   p->next_tid = 1;
-  p->kthread[0] = *allocthread(p);
   p->pid = allocpid();
   p->state = USEDPROC;
+
+  struct kthread *kt = allocthread(p);
+  if (kt == 0) {
+    freeproc(p);
+    release(&p->lock);
+    return 0;
+  }
+
+  p->kthread[0] = *kt;
 
   // Allocate a trapframe page.
   if((p->base_trapframes = (struct trapframe *)kalloc()) == 0){
@@ -473,22 +480,26 @@ scheduler(void)
     intr_on();
 
     for(p = proc; p < &proc[NPROC]; p++) {
-      kt = p->kthread; //TODO: This is only checking if main thread is RUNNABLE
       acquire(&p->lock);
-      acquire(&kt->lock);
-      if(kt->tstate == RUNNABLE) {
-        // Switch to chosen process.  It is the process's job
-        // to release its lock and then reacquire it
-        // before jumping back to us.
-        kt->tstate = RUNNING;
-        c->thread = kt;
-        swtch(&c->context, &kt->context);
+      if (p->state == USEDPROC)
+      {
+        for(kt = p->kthread; kt < &p->kthread[NKT]; kt++) {
+          acquire(&kt->lock);
+          if(kt->tstate == RUNNABLE) {
+            // Switch to chosen process.  It is the process's job
+            // to release its lock and then reacquire it
+            // before jumping back to us.
+            kt->tstate = RUNNING;
+            c->thread = kt;
+            swtch(&c->context, &kt->context);
 
-        // Process is done running for now.
-        // It should have changed its p->state before coming back.
-        c->thread = 0;
+            // Process is done running for now.
+            // It should have changed its p->state before coming back.
+            c->thread = 0;
+          }
+          release(&kt->lock);
+        }
       }
-      release(&kt->lock);
       release(&p->lock);
     }
   }

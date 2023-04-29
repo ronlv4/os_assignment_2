@@ -154,7 +154,8 @@ kerneltrap()
 
   if((which_dev = devintr()) == 0){
     printf("scause %p\n", scause);
-    printf("sepc=%p stval=%p\n", r_sepc(), r_stval());
+    printf("sepc=%p stval=%p cpuid=%d\n", r_sepc(), r_stval(), cpuid());
+    printf("procname=%s\n", myproc()->name);
     panic("kerneltrap");
   }
 
