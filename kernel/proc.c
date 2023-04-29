@@ -615,13 +615,14 @@ wakeup(void *chan)
 
   for(p = proc; p < &proc[NPROC]; p++) {
     if(p != myproc()){
-      kt = mykthread();
       acquire(&p->lock);
-      acquire(&kt->lock);
-      if(kt->tstate == SLEEPING && kt->chan == chan) {
-        kt->tstate = RUNNABLE;
+      for (kt = p->kthread; kt < &p->kthread[NKT]; kt++) {
+        acquire(&kt->lock);
+        if(kt->tstate == SLEEPING && kt->chan == chan) {
+          kt->tstate = RUNNABLE;
+        }
+        release(&kt->lock);
       }
-      release(&kt->lock);
       release(&p->lock);
     }
   }
