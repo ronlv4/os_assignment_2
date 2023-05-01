@@ -125,6 +125,7 @@ UPROGS=\
 	$U/_kill\
 	$U/_kthread_create\
 	$U/_kthread_exit\
+	$U/_kthread_id\
 	$U/_kthread_join\
 	$U/_kthread_kill\
 	$U/_ln\
@@ -158,7 +159,7 @@ QEMUGDB = $(shell if $(QEMU) -help | grep -q '^-gdb'; \
 	then echo "-gdb tcp::$(GDBPORT)"; \
 	else echo "-s -p $(GDBPORT)"; fi)
 ifndef CPUS
-CPUS := 1
+CPUS := 3
 endif
 
 QEMUOPTS = -machine virt -bios none -kernel $K/kernel -m 128M -smp $(CPUS) -nographic

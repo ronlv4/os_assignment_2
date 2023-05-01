@@ -57,7 +57,6 @@ found:
   kt->tid = alloctid(p);
   kt->tstate = USED;
   kt->trapframe = get_kthread_trapframe(p, kt);  
-  kt->proc = p;
 
   // Set up new context to start executing at forkret,
   // which returns to user space.
@@ -78,7 +77,6 @@ void freethread(struct kthread *kt)
   kt->killed = 0;
   kt->xstate = 0;
   kt->tid = 0;
-  kt->proc = 0;
 }
 
 int alloctid(struct proc *p)
