@@ -83,11 +83,10 @@ mycpu(void)
 // Return the current struct proc *, or zero if none.
 struct proc* myproc(void)
 {
-  push_off();
-  struct cpu *c = mycpu();
-  struct proc *p = c->thread->proc;
-  pop_off();
-  return p;
+  struct kthread *kt = mykthread();
+  if (kt == 0)
+    return 0;
+  return kt->proc;
 }
 
 int
@@ -127,14 +126,6 @@ found:
   p->pid = allocpid();
   p->state = USEDPROC;
 
-  struct kthread *kt = allocthread(p);
-  if (kt == 0) {
-    freeproc(p);
-    release(&p->lock);
-    return 0;
-  }
-
-  p->kthread[0] = *kt;
 
   // Allocate a trapframe page.
   if((p->base_trapframes = (struct trapframe *)kalloc()) == 0){
@@ -151,11 +142,16 @@ found:
     return 0;
   }
 
-  // // Set up new context to start executing at forkret,
-  // // which returns to user space.
-  // memset(&p->context, 0, sizeof(p->context));
-  // p->context.ra = (uint64)forkret;
-  // p->context.sp = p->kstack + PGSIZE;
+  struct kthread *kt = allocthread(p);
+  if (kt == 0) {
+    freeproc(p);
+    release(&p->lock);
+    return 0;
+  }
+
+  // when allocating a thread from within a process allocation,
+  // we can safely override the first kthread array entry
+  // p->kthread[0] = *kt;
 
   return p;
 }
@@ -269,7 +265,7 @@ userinit(void)
 
   p->kthread[0].tstate = RUNNABLE;
 
-  release(&p->kthread->lock);
+  release(&p->kthread[0].lock);
   release(&p->lock);
 }
 
@@ -404,6 +400,7 @@ exit(int status)
   kt->tstate = ZOMBIE;
   exit_threads(p, status);
 
+  release(&p->lock);
   release(&wait_lock);
 
   // Jump into the scheduler, never to return.
@@ -483,6 +480,7 @@ scheduler(void)
       acquire(&p->lock);
       if (p->state == USEDPROC)
       {
+        release(&p->lock);
         for(kt = p->kthread; kt < &p->kthread[NKT]; kt++) {
           acquire(&kt->lock);
           if(kt->tstate == RUNNABLE) {
@@ -500,13 +498,16 @@ scheduler(void)
           release(&kt->lock);
         }
       }
-      release(&p->lock);
+      else
+      {
+        release(&p->lock);
+      }
     }
   }
 }
 
-// Switch to scheduler.  Must hold only p->lock
-// and have changed proc->state. Saves and restores
+// Switch to scheduler. Must hold only kt->lock
+// and have changed kt->tstate. Saves and restores
 // intena because intena is a property of this
 // kernel thread, not this CPU. It should
 // be proc->intena and proc->noff, but that would
@@ -516,11 +517,8 @@ void
 sched(void)
 {
   int intena;
-  struct proc *p = myproc();
   struct kthread *kt = mykthread();
 
-  if(!holding(&p->lock))
-    panic("sched p->lock");
   if(!holding(&kt->lock))
     panic("sched kt->lock");
   if(mycpu()->noff != 1)
@@ -539,14 +537,11 @@ sched(void)
 void
 yield(void)
 {
-  struct proc *p = myproc();
   struct kthread *kt = mykthread();
-  acquire(&p->lock);
   acquire(&kt->lock);
   kt->tstate = RUNNABLE;
   sched();
   release(&kt->lock);
-  release(&p->lock);
 }
 
 // A fork child's very first scheduling by scheduler()
@@ -558,7 +553,7 @@ forkret(void)
 
   // Still holding p->lock from scheduler.
   release(&mykthread()->lock);
-  release(&myproc()->lock);
+  // release(&myproc()->lock);
 
   if (first) {
     // File system initialization must be run in the context of a
@@ -576,7 +571,6 @@ forkret(void)
 void
 sleep(void *chan, struct spinlock *lk)
 {
-  struct proc *p = myproc();
   struct kthread *kt = mykthread();
   
   // Must acquire p->lock in order to
@@ -586,7 +580,6 @@ sleep(void *chan, struct spinlock *lk)
   // (wakeup locks p->lock),
   // so it's okay to release lk.
 
-  acquire(&p->lock);  //DOC: sleeplock1
   acquire(&kt->lock);
   release(lk);
 
@@ -601,7 +594,6 @@ sleep(void *chan, struct spinlock *lk)
 
   // Reacquire original lock.
   release(&kt->lock);
-  release(&p->lock);
   acquire(lk);
 }
 
@@ -615,6 +607,7 @@ wakeup(void *chan)
 
   for(p = proc; p < &proc[NPROC]; p++) {
     if(p != myproc()){
+      //TODO: wakeup threads on current process
       acquire(&p->lock);
       for (kt = p->kthread; kt < &p->kthread[NKT]; kt++) {
         acquire(&kt->lock);
@@ -706,9 +699,9 @@ void
 procdump(void)
 {
   static char *states[] = {
-  [UNUSEDPROC]    "unused",
-  [USEDPROC]      "used",
-  [ZOMBIEPROC]    "zombie"
+  [UNUSEDPROC]    "unusedproc",
+  [USEDPROC]      "usedproc",
+  [ZOMBIEPROC]    "zombieproc"
   };
   struct proc *p;
   char *state;

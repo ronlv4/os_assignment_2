@@ -26,7 +26,7 @@ void kthreadinit(struct proc *p)
   }
 }
 
-struct kthread *mykthread()
+struct kthread *mykthread(void)
 {
   push_off();
   struct cpu *c = mycpu();
@@ -56,13 +56,7 @@ struct kthread* allocthread(struct proc *p)
 found:
   kt->tid = alloctid(p);
   kt->tstate = USED;
-
-  // Allocate a trapframe page.
-  if((kt->trapframe = (struct trapframe *)kalloc()) == 0){
-    freethread(kt);
-    release(&kt->lock);
-    return 0;
-  }
+  kt->trapframe = get_kthread_trapframe(p, kt);  
 
   // Set up new context to start executing at forkret,
   // which returns to user space.

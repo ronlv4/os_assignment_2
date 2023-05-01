@@ -11,15 +11,15 @@ int thread_count = 0;
 
 int uthread_create(void (*start_func)(), enum sched_priority priority)
 {
-    struct uthread *t;
+    struct uthread *kt;
     
-    for (t = uthreads; t < &uthreads[MAX_UTHREADS]; t++)
+    for (kt = uthreads; kt < &uthreads[MAX_UTHREADS]; kt++)
     {
-        t->state = FREE;
-        t->priority = priority;
+        kt->state = FREE;
+        kt->priority = priority;
 
-        t->context.ra = (uint64)start_func;
-        t->context.sp = (uint64)t->ustack + STACK_SIZE;
+        kt->context.ra = (uint64)start_func;
+        kt->context.sp = (uint64)kt->ustack + STACK_SIZE;
     }
 
     return 0;
