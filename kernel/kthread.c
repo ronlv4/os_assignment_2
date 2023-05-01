@@ -113,6 +113,7 @@ int kthread_exit(int status)
     }
     release(&kt->lock);
   }
+  release(&p->lock);
 
   if (!found_alive)
   {
@@ -147,7 +148,6 @@ int kthread_kill(int ktid)
   struct proc *p = myproc();
   struct kthread *kt;
 
-  acquire(&p->lock);
   for (kt = p->kthread; kt < &p->kthread[NKT]; kt++)
   {
     acquire(&kt->lock);
@@ -162,7 +162,7 @@ int kthread_kill(int ktid)
     }
     release(&kt->lock);
   }
-  release(&p->lock);
+
   return -1; // no matching tid found within process
 }
 
