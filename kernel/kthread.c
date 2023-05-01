@@ -57,6 +57,7 @@ found:
   kt->tid = alloctid(p);
   kt->tstate = USED;
   kt->trapframe = get_kthread_trapframe(p, kt);  
+  kt->proc = p;
 
   // Set up new context to start executing at forkret,
   // which returns to user space.

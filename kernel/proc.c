@@ -106,7 +106,7 @@ allocpid()
 // If found, initialize state required to run in the kernel,
 // and return with p->lock held.
 // If there are no free procs, or a memory allocation fails, return 0.
-static struct proc*
+static struct kthread*
 allocproc(void)
 {
   struct proc *p;
@@ -153,7 +153,7 @@ found:
   // we can safely override the first kthread array entry
   // p->kthread[0] = *kt;
 
-  return p;
+  return kt;
 }
 
 // free a proc structure and the data hanging from it,
@@ -248,7 +248,7 @@ userinit(void)
 {
   struct proc *p;
 
-  p = allocproc();
+  p = allocproc()->proc;
   initproc = p;
   
   // allocate one user page and copy initcode's instructions
@@ -298,11 +298,13 @@ fork(void)
   struct proc *np;
   struct proc *p = myproc();
   struct kthread *kt = mykthread();
+  struct kthread *nkt;
 
   // Allocate process.
-  if((np = allocproc()) == 0){
+  if((nkt = allocproc()) == 0){
     return -1;
   }
+  np = nkt->proc;
 
   // Copy user memory from parent to child.
   if(uvmcopy(p->pagetable, np->pagetable, p->sz) < 0){
@@ -313,10 +315,10 @@ fork(void)
   np->sz = p->sz;
 
   // copy saved user registers.
-  *(np->kthread[0].trapframe) = *(kt->trapframe);
+  *(nkt->trapframe) = *(kt->trapframe);
 
   // Cause fork to return 0 in the child.
-  np->kthread[0].trapframe->a0 = 0;
+  nkt->trapframe->a0 = 0;
 
   // increment reference counts on open file descriptors.
   for(i = 0; i < NOFILE; i++)
@@ -327,6 +329,8 @@ fork(void)
   safestrcpy(np->name, p->name, sizeof(p->name));
 
   pid = np->pid;
+  nkt->tstate = RUNNABLE;
+  release(&nkt->lock);
 
   release(&np->lock);
 
@@ -334,11 +338,6 @@ fork(void)
   np->parent = p;
   release(&wait_lock);
 
-  acquire(&np->lock);
-  acquire(&np->kthread[0].lock);
-  np->kthread[0].tstate = RUNNABLE;
-  release(&np->kthread[0].lock);
-  release(&np->lock);
 
   return pid;
 }
@@ -431,8 +430,7 @@ wait(uint64 addr)
         if(pp->state == ZOMBIEPROC){
           // Found one.
           pid = pp->pid;
-          if(addr != 0 && copyout(p->pagetable, addr, (char *)&pp->xstate,
-                                  sizeof(pp->xstate)) < 0) {
+          if(addr != 0 && copyout(p->pagetable, addr, (char *)&pp->xstate, sizeof(pp->xstate)) < 0) {
             release(&pp->lock);
             release(&wait_lock);
             return -1;
@@ -609,6 +607,11 @@ wakeup(void *chan)
     if(p != myproc()){
       //TODO: wakeup threads on current process
       acquire(&p->lock);
+      if (p->state != USEDPROC)
+      {
+        release(&p->lock);
+        continue;
+      }
       for (kt = p->kthread; kt < &p->kthread[NKT]; kt++) {
         acquire(&kt->lock);
         if(kt->tstate == SLEEPING && kt->chan == chan) {
