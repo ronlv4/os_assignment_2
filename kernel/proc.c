@@ -604,7 +604,6 @@ wakeup(void *chan)
   struct kthread *kt;
 
   for(p = proc; p < &proc[NPROC]; p++) {
-    if(p != myproc()){
       //TODO: wakeup threads on current process
       acquire(&p->lock);
       if (p->state != USEDPROC)
@@ -613,14 +612,16 @@ wakeup(void *chan)
         continue;
       }
       for (kt = p->kthread; kt < &p->kthread[NKT]; kt++) {
-        acquire(&kt->lock);
-        if(kt->tstate == SLEEPING && kt->chan == chan) {
-          kt->tstate = RUNNABLE;
+        if (kt != mykthread())
+        {
+          acquire(&kt->lock);
+          if(kt->tstate == SLEEPING && kt->chan == chan) {
+            kt->tstate = RUNNABLE;
+          }
+          release(&kt->lock);
         }
-        release(&kt->lock);
       }
       release(&p->lock);
-    }
   }
 }
 
