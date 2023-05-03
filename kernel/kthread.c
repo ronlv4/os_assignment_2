@@ -9,6 +9,7 @@
 extern struct proc proc[NPROC];
 extern void forkret(void);
 
+struct spinlock join_lock;
 
 void kthreadinit(struct proc *p)
 {
@@ -128,21 +129,6 @@ int kthread_exit(int status)
   return 0;
 }
 
-int wakeup_all_threads(struct proc *p)
-{
-  for (struct kthread *kt = p->kthread; kt < &p->kthread[NKT]; kt++)
-  {
-    acquire(&kt->lock);
-    kt->killed = 1;
-    if (kt->tstate == SLEEPING)
-    {
-      kt->tstate = RUNNABLE;
-    }
-    release(&kt->lock);
-  }
-  return 0;
-}
-
 int kthread_kill(int ktid)
 {
   struct proc *p = myproc();
@@ -170,21 +156,17 @@ int kthread_killed(struct kthread *kt)
 {
   int k;
   
-  acquire(&kt->proc->lock);
   acquire(&kt->lock);
   k = kt->killed;
   release(&kt->lock);
-  release(&kt->proc->lock);
   return k;
 }
 
 void setkthreadkilled(struct kthread *kt)
 {
-  acquire(&kt->proc->lock);
   acquire(&kt->lock);
   kt->killed = 1;
   release(&kt->lock);
-  release(&kt->proc->lock);
 }
 
 // calling thread holding lock
@@ -203,7 +185,55 @@ int exit_threads(struct proc *p, int status)
   return 0;
 }
 
-int kthread_join(uint64 addr)
+int kthread_join(int ktid, uint64 addr)
 {
-  return 0;
+  struct proc *p;
+
+  // find the kthread with the given tid
+  struct kthread *kt;
+  for (p = proc; p < &proc[NPROC]; p++)
+  {
+    for (kt = p->kthread; kt < &p->kthread[NKT]; kt++)
+    {
+      acquire(&kt->lock);
+      if (kt->tid == ktid)
+      {
+        goto found;
+      }
+      release(&kt->lock);
+    }
+  }
+
+  return -1; // no matching tid found
+
+found:
+  release(&kt->lock);
+
+  acquire(&join_lock);
+
+  for (;;)
+  {
+    acquire(&kt->lock);
+    if (kt->tstate == ZOMBIE)
+    {
+      if (addr != 0 && copyout(p->pagetable, addr, (char *)&kt->xstate, sizeof(kt->xstate)) < 0)
+      {
+        release(&join_lock);
+        return -1;
+      }
+      freethread(kt);
+      release(&kt->lock);
+      release(&join_lock);
+      return 0;
+    }
+
+    release(&kt->lock);
+    if (kthread_killed(kt))
+    {
+      release(&join_lock);
+      return -1;
+    }
+
+    sleep(kt, &join_lock);
+  }
 }

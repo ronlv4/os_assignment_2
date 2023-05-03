@@ -106,12 +106,12 @@ uint64 sys_kthread_exit(void)
 uint64 sys_kthread_join(void)
 {
   int ktid;
-  uint64 p;
+  uint64 status;
 
   argint(0, &ktid);
-  argaddr(1, &p);
+  argaddr(1, &status);
 
-  return kthread_join(p);
+  return kthread_join(ktid, status);
 }
 
 // return how many clock tick interrupts have occurred

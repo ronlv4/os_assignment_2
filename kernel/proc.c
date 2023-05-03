@@ -637,7 +637,16 @@ kill(int pid)
     if(p->pid == pid){
       p->killed = 1;
       // Wake process from sleep().
-      wakeup_all_threads(p);
+      for (struct kthread *kt = p->kthread; kt < &p->kthread[NKT]; kt++)
+      {
+        acquire(&kt->lock);
+        kt->killed = 1;
+        if (kt->tstate == SLEEPING)
+        {
+          kt->tstate = RUNNABLE;
+        }
+        release(&kt->lock);
+      }
       release(&p->lock);
       return 0;
     }
