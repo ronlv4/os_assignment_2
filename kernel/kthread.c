@@ -40,15 +40,19 @@ struct kthread *mykthread(void)
 // If found, initialize state required to run in the kernel,
 // and return with kt->lock held.
 // If there are no free kthreads, or a memory allocation fails, return 0.
-struct kthread* allocthread(struct proc *p)
+struct kthread *allocthread(struct proc *p)
 {
   struct kthread *kt;
 
-  for(kt = p->kthread; kt < &p->kthread[NKT]; kt++) {
+  for (kt = p->kthread; kt < &p->kthread[NKT]; kt++)
+  {
     acquire(&kt->lock);
-    if(kt->tstate == UNUSED) {
+    if (kt->tstate == UNUSED)
+    {
       goto found;
-    } else {
+    }
+    else
+    {
       release(&kt->lock);
     }
   }
@@ -57,7 +61,7 @@ struct kthread* allocthread(struct proc *p)
 found:
   kt->tid = alloctid(p);
   kt->tstate = USED;
-  kt->trapframe = get_kthread_trapframe(p, kt);  
+  kt->trapframe = get_kthread_trapframe(p, kt);
 
   // Set up new context to start executing at forkret,
   // which returns to user space.
@@ -83,7 +87,7 @@ void freethread(struct kthread *kt)
 int alloctid(struct proc *p)
 {
   int tid;
-  
+
   acquire(&p->tid_lock);
   tid = p->next_tid;
   p->next_tid = tid + 1;
@@ -155,7 +159,7 @@ int kthread_kill(int ktid)
 int kthread_killed(struct kthread *kt)
 {
   int k;
-  
+
   acquire(&kt->lock);
   k = kt->killed;
   release(&kt->lock);

@@ -12,7 +12,7 @@ sys_exit(void)
   int n;
   argint(0, &n);
   exit(n);
-  return 0;  // not reached
+  return 0; // not reached
 }
 
 uint64
@@ -43,7 +43,7 @@ sys_sbrk(void)
 
   argint(0, &n);
   addr = myproc()->sz;
-  if(growproc(n) < 0)
+  if (growproc(n) < 0)
     return -1;
   return addr;
 }
@@ -57,8 +57,10 @@ sys_sleep(void)
   argint(0, &n);
   acquire(&tickslock);
   ticks0 = ticks;
-  while(ticks - ticks0 < n){
-    if(killed(myproc()) || kthread_killed(mykthread())){
+  while (ticks - ticks0 < n)
+  {
+    if (killed(myproc()) || kthread_killed(mykthread()))
+    {
       release(&tickslock);
       return -1;
     }
@@ -100,7 +102,7 @@ uint64 sys_kthread_exit(void)
   int n;
   argint(0, &n);
   kthread_exit(n);
-  return 0;  // not reached
+  return 0; // not reached
 }
 
 uint64 sys_kthread_join(void)
