@@ -9,7 +9,7 @@
 extern struct proc proc[NPROC];
 extern void forkret(void);
 
-struct spinlock join_lock;
+extern struct spinlock join_lock;
 
 void kthreadinit(struct proc *p)
 {
@@ -125,10 +125,30 @@ int kthread_exit(int status)
     exit(status); // never to return
   }
 
+  kthread_wakeup(kt);
+
   acquire(&kt->lock);
   kt->xstate = status;
   kt->tstate = ZOMBIE;
   release(&kt->lock);
+
+  return 0;
+}
+
+int kthread_wakeup(void *chan)
+{
+  struct kthread *kt;
+  struct proc *p = myproc();
+
+  for (kt = p->kthread; kt < &p->kthread[NKT]; kt++)
+  {
+    acquire(&kt->lock);
+    if (kt->tstate == SLEEPING && kt->chan == chan)
+    {
+      kt->tstate = RUNNABLE;
+    }
+    release(&kt->lock);
+  }
 
   return 0;
 }
@@ -194,50 +214,50 @@ int kthread_join(int ktid, uint64 addr)
   struct proc *p;
 
   // find the kthread with the given tid
-  struct kthread *kt;
+  struct kthread *jkt;
   for (p = proc; p < &proc[NPROC]; p++)
   {
-    for (kt = p->kthread; kt < &p->kthread[NKT]; kt++)
+    for (jkt = p->kthread; jkt < &p->kthread[NKT]; jkt++)
     {
-      acquire(&kt->lock);
-      if (kt->tid == ktid)
+      acquire(&jkt->lock);
+      if (jkt->tid == ktid)
       {
         goto found;
       }
-      release(&kt->lock);
+      release(&jkt->lock);
     }
   }
 
   return -1; // no matching tid found
 
 found:
-  release(&kt->lock);
+  release(&jkt->lock);
 
   acquire(&join_lock);
 
   for (;;)
   {
-    acquire(&kt->lock);
-    if (kt->tstate == ZOMBIE)
+    acquire(&jkt->lock);
+    if (jkt->tstate == ZOMBIE)
     {
-      if (addr != 0 && copyout(p->pagetable, addr, (char *)&kt->xstate, sizeof(kt->xstate)) < 0)
+      if (addr != 0 && copyout(p->pagetable, addr, (char *)&jkt->xstate, sizeof(jkt->xstate)) < 0)
       {
         release(&join_lock);
         return -1;
       }
-      freethread(kt);
-      release(&kt->lock);
+      freethread(jkt);
+      release(&jkt->lock);
       release(&join_lock);
       return 0;
     }
 
-    release(&kt->lock);
-    if (kthread_killed(kt))
+    release(&jkt->lock);
+    if (kthread_killed(jkt))
     {
       release(&join_lock);
       return -1;
     }
 
-    sleep(kt, &join_lock);
+    sleep(jkt, &join_lock);
   }
 }
