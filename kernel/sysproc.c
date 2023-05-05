@@ -81,7 +81,15 @@ sys_kill(void)
 
 uint64 sys_kthread_create(void)
 {
-  return 0;
+  uint64 fn, stack, szp;
+  uint sz;
+
+  argaddr(0, &fn);
+  argaddr(1, &stack);
+  argaddr(2, &szp);
+  sz = (uint)(*(uint64 *)szp);
+
+  return kthread_create((void *(*)())fn, (void *)stack, sz);
 }
 
 uint64 sys_kthread_id(void)

@@ -101,6 +101,32 @@ struct trapframe *get_kthread_trapframe(struct proc *p, struct kthread *kt)
   return p->base_trapframes + ((int)(kt - p->kthread));
 }
 
+int kthread_create( void *(*start_func)(), void *stack, uint stack_size)
+{
+  struct proc *p = myproc();
+  struct kthread *kt;
+
+  if ((kt = allocthread(p)) == 0)
+  {
+    return -1;
+  }
+
+  // Set up new context to start executing at start_func,
+  // which returns to user space.
+  memset(&kt->context, 0, sizeof(kt->context));
+  kt->context.ra = (uint64)start_func;
+  kt->context.sp = (uint64)stack + PGSIZE;
+
+  return kt->tid;
+}
+
+int start_func_wrapper(void (*start_func)())
+{
+  start_func();
+  kthread_exit(0);
+  return 0;
+}
+
 int kthread_exit(int status)
 {
   struct proc *p = myproc();

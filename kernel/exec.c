@@ -123,6 +123,8 @@ exec(char *path, char **argv)
   safestrcpy(p->name, last, sizeof(p->name));
     
   // Commit to the user image.
+  exit_threads(p, 0);
+  // TODO: maybe join all other threads before exec?
   oldpagetable = p->pagetable;
   p->pagetable = pagetable;
   p->sz = sz;
