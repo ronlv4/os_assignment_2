@@ -2616,8 +2616,8 @@ void ulttest()
 
 
 void kthread_start_func(void){
-  for(int i=0; i<10; i++){
-    sleep(10); // simulate work
+  for(int i=0; i<2; i++){
+    sleep(3); // simulate work
   }
   kthread_exit(0);
   printf("kthread_exit failed\n");

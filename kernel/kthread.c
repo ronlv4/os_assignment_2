@@ -110,14 +110,16 @@ int kthread_create( void *(*start_func)(), void *stack, uint stack_size)
   {
     return -1;
   }
+  int tid = kt->tid;
 
   // Set up new context to start executing at start_func,
   // which returns to user space.
   memset(&kt->context, 0, sizeof(kt->context));
   kt->context.ra = (uint64)start_func;
   kt->context.sp = (uint64)stack + PGSIZE;
+  release(&kt->lock);
 
-  return kt->tid;
+  return tid;
 }
 
 int start_func_wrapper(void (*start_func)())
