@@ -9,7 +9,7 @@
 extern struct proc proc[NPROC];
 extern void forkret(void);
 
-extern struct spinlock join_lock;
+extern struct spinlock wait_lock;
 
 void kthreadinit(struct proc *p)
 {
@@ -129,7 +129,7 @@ int start_func_wrapper(void (*start_func)())
   return 0;
 }
 
-int kthread_exit(int status)
+void kthread_exit(int status)
 {
   struct proc *p = myproc();
   struct kthread *kt;
@@ -153,14 +153,18 @@ int kthread_exit(int status)
     exit(status); // never to return
   }
 
+  acquire(&wait_lock);
+
   kthread_wakeup(kt);
 
   acquire(&kt->lock);
   kt->xstate = status;
   kt->tstate = ZOMBIE;
   release(&kt->lock);
+  release(&wait_lock);
 
-  return 0;
+  sched();
+  panic("kt zombie exit");
 }
 
 int kthread_wakeup(void *chan)
@@ -261,7 +265,7 @@ int kthread_join(int ktid, uint64 addr)
 found:
   release(&jkt->lock);
 
-  acquire(&join_lock);
+  acquire(&wait_lock);
 
   for (;;)
   {
@@ -270,22 +274,22 @@ found:
     {
       if (addr != 0 && copyout(p->pagetable, addr, (char *)&jkt->xstate, sizeof(jkt->xstate)) < 0)
       {
-        release(&join_lock);
+        release(&wait_lock);
         return -1;
       }
       freethread(jkt);
       release(&jkt->lock);
-      release(&join_lock);
+      release(&wait_lock);
       return 0;
     }
 
     release(&jkt->lock);
     if (kthread_killed(jkt))
     {
-      release(&join_lock);
+      release(&wait_lock);
       return -1;
     }
 
-    sleep(jkt, &join_lock);
+    sleep(jkt, &wait_lock);
   }
 }

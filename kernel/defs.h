@@ -116,7 +116,7 @@ void                freethread(struct kthread *);
 int                 alloctid(struct proc *);
 struct trapframe*   get_kthread_trapframe(struct proc *, struct kthread *);
 int                 kthread_create(void *(*)(), void *, uint);
-int                 kthread_exit(int);
+void                kthread_exit(int);
 int                 kthread_wakeup(void *);
 int                 kthread_kill(int);
 int                 kthread_killed(struct kthread*);
