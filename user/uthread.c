@@ -51,6 +51,7 @@ int transfer_control()
             self = ut;
             uswtch(&old->context, &ut->context);
         }
+        
     }
     return 0;
 }
@@ -64,9 +65,12 @@ void uthread_exit()
 
     for (ut = uthreads; ut < &uthreads[MAX_UTHREADS]; ut++)
     {
-        if (ut
+        if (ut->state == RUNNABLE || ut->state == RUNNING)
+        {
+            found_alive = 1;
+        }
     }
-    if (thread_count == 0)
+    if (!found_alive)
     {
         exit(0);
     }
