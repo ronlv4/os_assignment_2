@@ -66,7 +66,7 @@ void uthread_exit()
 
 int uthread_start_all()
 {
-    //(void (*)())(self->context.ra);
+    (*(void (*)())(self->context.ra))();
     return 0;
 }
 
