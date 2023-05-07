@@ -17,9 +17,9 @@ int uthread_create(void (*start_func)(), enum sched_priority priority)
         if (kt->state == FREE)
         {
             kt->priority = priority;
-            kt->context.ra = (uint64)start_func;
+            kt->context.ra = (uint64)start_func_wrapper;
             kt->context.sp = (uint64)kt->ustack + STACK_SIZE;
-            kt->state = FREE;
+            kt->state = RUNNABLE;
             return 0;
         }
     }
