@@ -220,7 +220,7 @@ void setkthreadkilled(struct kthread *kt)
   kt->killed = 1;
   release(&kt->lock);
 }
-
+  
 // calling thread holding lock
 int exit_threads(struct proc *p, int status)
 {
