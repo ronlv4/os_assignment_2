@@ -141,20 +141,21 @@ void kthread_exit(int status)
   }
   release(&p->lock);
 
-  if (!found_alive)
-  {
-    exit(status); // never to return
-  }
 
   acquire(&wait_lock);
 
   kthread_wakeup(kt);
 
+  release(&wait_lock);
+  if (!found_alive)
+  {
+    exit(status); // never to return
+  }
+
   acquire(&kt->lock);
   kt->xstate = status;
   kt->tstate = ZOMBIE;
   release(&kt->lock);
-  release(&wait_lock);
 
   sched();
   panic("kt zombie exit");

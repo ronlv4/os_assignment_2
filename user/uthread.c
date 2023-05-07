@@ -43,16 +43,28 @@ int transfer_control()
 {
     struct uthread *ut;
 
+    struct uthread *next_ut;
+    int found_runnable = 0;
     for (ut = uthreads; ut < &uthreads[MAX_UTHREADS]; ut++)
     {
-        if (ut->state == RUNNABLE)
+        if (!found_runnable && ut->state == RUNNABLE)
         {
-            struct uthread *old = self;
-            self = ut;
-            uswtch(&old->context, &ut->context);
+            next_ut = ut;
         }
-        
+
+        else if (ut->state == RUNNABLE && ut->priority > next_ut->priority)
+        {
+            next_ut = ut;
+        }
     }
+
+    if (!ut)
+    {
+        exit(-1);
+    }
+    struct uthread *old = self;
+    self = ut;
+    uswtch(&old->context, &ut->context);
     return 0;
 }
 
@@ -90,7 +102,6 @@ int uthread_start_all()
     }
 
     return -1;
-
 }
 
 enum sched_priority uthread_set_priority(enum sched_priority priority)
