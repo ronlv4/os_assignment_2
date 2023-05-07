@@ -10,27 +10,22 @@ int thread_count = 0;
 
 int uthread_create(void (*start_func)(), enum sched_priority priority)
 {
-    struct uthread *kt;
+    struct uthread *ut;
 
-    for (kt = uthreads; kt < &uthreads[MAX_UTHREADS]; kt++)
+    for (ut = uthreads; ut < &uthreads[MAX_UTHREADS]; ut++)
     {
-        if (kt->state == FREE)
+        if (ut->state == FREE)
         {
-            kt->priority = priority;
-            kt->context.ra = (uint64)start_func_wrapper;
-            kt->context.sp = (uint64)kt->ustack + STACK_SIZE;
-            kt->state = RUNNABLE;
+            ut->priority = priority;
+            memset(&ut->context, 0, sizeof(ut->context));
+            ut->context.ra = (uint64)start_func;
+            ut->context.sp = (uint64)ut->ustack + STACK_SIZE;
+            ut->state = RUNNABLE;
             return 0;
         }
     }
 
     return -1;
-}
-
-void start_func_wrapper(void (*start_func)())
-{
-    start_func();
-    uthread_exit(0);
 }
 
 void uthread_yield()
@@ -46,15 +41,15 @@ void uthread_yield()
 // accumulator update
 int transfer_control()
 {
-    struct uthread *kt;
+    struct uthread *ut;
 
-    for (kt = uthreads; kt < &uthreads[MAX_UTHREADS]; kt++)
+    for (ut = uthreads; ut < &uthreads[MAX_UTHREADS]; ut++)
     {
-        if (kt->state == RUNNABLE)
+        if (ut->state == RUNNABLE)
         {
             struct uthread *old = self;
-            self = kt;
-            uswtch(&old->context, &kt->context);
+            self = ut;
+            uswtch(&old->context, &ut->context);
         }
     }
     return 0;
@@ -64,6 +59,13 @@ void uthread_exit()
 {
     self->state = FREE;
 
+    int found_alive = 0;
+    struct uthread *ut;
+
+    for (ut = uthreads; ut < &uthreads[MAX_UTHREADS]; ut++)
+    {
+        if (ut
+    }
     if (thread_count == 0)
     {
         exit(0);
@@ -74,8 +76,17 @@ void uthread_exit()
 
 int uthread_start_all()
 {
-    (*(void (*)())(self->context.ra))();
-    return 0;
+    static int first = 1;
+
+    if (first)
+    {
+        first = 0;
+        (*(void (*)())(self->context.ra))();
+        return 0;
+    }
+
+    return -1;
+
 }
 
 enum sched_priority uthread_set_priority(enum sched_priority priority)
