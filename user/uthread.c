@@ -39,6 +39,16 @@ void uthread_yield()
 // accumulator update
 int transfer_control()
 {
+    struct uthread *kt;
+    
+    for (kt = uthreads; kt < &uthreads[MAX_UTHREADS]; kt++)
+    {
+        if(kt->state == RUNNABLE){
+            struct uthread *old = self;
+            self = kt;
+            uswtch(&old->context, &kt->context);
+        }
+    }
     return 0;
 }
 
@@ -56,6 +66,7 @@ void uthread_exit()
 
 int uthread_start_all()
 {
+    (*(void (*)())(self->context.ra))();
     return 0;
 }
 
