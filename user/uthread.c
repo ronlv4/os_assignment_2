@@ -8,21 +8,29 @@ struct uthread *self;
 
 int thread_count = 0;
 
-
 int uthread_create(void (*start_func)(), enum sched_priority priority)
 {
     struct uthread *kt;
-    
+
     for (kt = uthreads; kt < &uthreads[MAX_UTHREADS]; kt++)
     {
-        kt->state = FREE;
-        kt->priority = priority;
-
-        kt->context.ra = (uint64)start_func;
-        kt->context.sp = (uint64)kt->ustack + STACK_SIZE;
+        if (kt->state == FREE)
+        {
+            kt->priority = priority;
+            kt->context.ra = (uint64)start_func;
+            kt->context.sp = (uint64)kt->ustack + STACK_SIZE;
+            kt->state = FREE;
+            return 0;
+        }
     }
 
-    return 0;
+    return -1;
+}
+
+void start_func_wrapper(void (*start_func)())
+{
+    start_func();
+    uthread_exit(0);
 }
 
 void uthread_yield()
@@ -32,7 +40,6 @@ void uthread_yield()
     transfer_control();
 }
 
-
 // change self pointer
 // context switch
 // min accumulator
@@ -40,10 +47,11 @@ void uthread_yield()
 int transfer_control()
 {
     struct uthread *kt;
-    
+
     for (kt = uthreads; kt < &uthreads[MAX_UTHREADS]; kt++)
     {
-        if(kt->state == RUNNABLE){
+        if (kt->state == RUNNABLE)
+        {
             struct uthread *old = self;
             self = kt;
             uswtch(&old->context, &kt->context);
@@ -70,7 +78,6 @@ int uthread_start_all()
     return 0;
 }
 
-
 enum sched_priority uthread_set_priority(enum sched_priority priority)
 {
     // maybe add validation checks
@@ -83,7 +90,7 @@ enum sched_priority uthread_get_priority()
     return self->priority;
 }
 
-struct uthread* uthread_self()
+struct uthread *uthread_self()
 {
     return self;
 }

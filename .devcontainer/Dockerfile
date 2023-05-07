@@ -14,4 +14,3 @@ RUN apt-get install -y git build-essential gdb-multiarch qemu-system-misc gcc-ri
 # enable loading custom .gdbinit per folder.
 # RUN echo set auto-load safe-path / > /root/.gdbinit
 RUN echo set architecture riscv:rv64 > /root/.gdbinit
-# RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
