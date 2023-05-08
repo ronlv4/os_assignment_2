@@ -142,17 +142,17 @@ void kthread_exit(int status)
     release(&kt->lock);
   }
 
-  // acquire(&wait_lock);
+  kt = mykthread();
 
-  // kthread_wakeup(p);
+  acquire(&wait_lock);
 
-  // release(&wait_lock);
+  kthread_wakeup(kt);
+
+  release(&wait_lock);
   if (!found_alive)
   {
     exit(status); // never to return
   }
-
-  kt = mykthread();
 
   acquire(&kt->lock);
   kt->xstate = status;
@@ -289,6 +289,6 @@ found:
       return -1;
     }
 
-    // sleep(myproc(), &wait_lock);
+    sleep(jkt, &wait_lock);
   }
 }
