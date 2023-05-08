@@ -136,25 +136,28 @@ void kthread_exit(int status)
     if (kt != mykthread() && kt->tstate != ZOMBIE)
     {
       found_alive = 1;
+      release(&kt->lock);
       break;
     }
     release(&kt->lock);
   }
 
-  acquire(&wait_lock);
+  // acquire(&wait_lock);
 
-  kthread_wakeup(mykthread());
+  // kthread_wakeup(p);
 
-  release(&wait_lock);
+  // release(&wait_lock);
   if (!found_alive)
   {
     exit(status); // never to return
   }
 
+  kt = mykthread();
+
   acquire(&kt->lock);
   kt->xstate = status;
   kt->tstate = ZOMBIE;
-  release(&kt->lock);
+  // release(&kt->lock);
 
   sched();
   panic("kt zombie exit");
@@ -286,6 +289,6 @@ found:
       return -1;
     }
 
-    sleep(jkt, &wait_lock);
+    // sleep(myproc(), &wait_lock);
   }
 }
