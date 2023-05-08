@@ -621,12 +621,6 @@ void wakeup(void *chan)
 
   for (p = proc; p < &proc[NPROC]; p++)
   {
-    acquire(&p->lock);
-    if (p->state != USEDPROC)
-    {
-      release(&p->lock);
-      continue;
-    }
     for (kt = p->kthread; kt < &p->kthread[NKT]; kt++)
     {
       if (kt != mykthread())
@@ -639,7 +633,6 @@ void wakeup(void *chan)
         release(&kt->lock);
       }
     }
-    release(&p->lock);
   }
 }
 

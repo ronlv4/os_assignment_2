@@ -76,6 +76,7 @@ found:
 // kt->lock must be held.
 void freethread(struct kthread *kt)
 {
+  memset(&kt->context, 0, sizeof(kt->context));
   kt->trapframe = 0;
   kt->tstate = UNUSED;
   kt->chan = 0;
@@ -101,7 +102,7 @@ struct trapframe *get_kthread_trapframe(struct proc *p, struct kthread *kt)
   return p->base_trapframes + ((int)(kt - p->kthread));
 }
 
-int kthread_create( void *(*start_func)(), void *stack, uint stack_size)
+int kthread_create(void *(*start_func)(), void *stack, uint stack_size)
 {
   struct proc *p = myproc();
   struct kthread *kt;
@@ -114,9 +115,9 @@ int kthread_create( void *(*start_func)(), void *stack, uint stack_size)
 
   // Set up new context to start executing at start_func,
   // which returns to user space.
-  memset(&kt->context, 0, sizeof(kt->context));
-  kt->context.ra = (uint64)start_func;
-  kt->context.sp = (uint64)stack + PGSIZE;
+  kt->trapframe->epc = (uint64)start_func;
+  kt->trapframe->sp = (uint64)stack + stack_size;
+  kt->tstate = RUNNABLE;
   release(&kt->lock);
 
   return tid;
@@ -129,22 +130,20 @@ void kthread_exit(int status)
 
   int found_alive = 0;
 
-  acquire(&p->lock);
   for (kt = p->kthread; kt < &p->kthread[NKT]; kt++)
   {
     acquire(&kt->lock);
     if (kt != mykthread() && kt->tstate != ZOMBIE)
     {
       found_alive = 1;
+      break;
     }
     release(&kt->lock);
   }
-  release(&p->lock);
-
 
   acquire(&wait_lock);
 
-  kthread_wakeup(kt);
+  kthread_wakeup(mykthread());
 
   release(&wait_lock);
   if (!found_alive)
@@ -168,12 +167,15 @@ int kthread_wakeup(void *chan)
 
   for (kt = p->kthread; kt < &p->kthread[NKT]; kt++)
   {
-    acquire(&kt->lock);
-    if (kt->tstate == SLEEPING && kt->chan == chan)
+    if (kt != mykthread())
     {
-      kt->tstate = RUNNABLE;
+      acquire(&kt->lock);
+      if (kt->tstate == SLEEPING && kt->chan == chan)
+      {
+        kt->tstate = RUNNABLE;
+      }
+      release(&kt->lock);
     }
-    release(&kt->lock);
   }
 
   return 0;
@@ -218,7 +220,7 @@ void setkthreadkilled(struct kthread *kt)
   kt->killed = 1;
   release(&kt->lock);
 }
-  
+
 // calling thread holding lock
 int exit_threads(struct proc *p, int status)
 {

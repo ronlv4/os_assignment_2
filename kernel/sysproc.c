@@ -81,21 +81,14 @@ sys_kill(void)
 
 uint64 sys_kthread_create(void)
 {
-  uint64 fn, stack, szp;
-  // uint sz;
+  uint64 fn, stack;
+  uint stack_size;
 
   argaddr(0, &fn);
   argaddr(1, &stack);
-  argaddr(2, &szp);
-  // sz = (uint)(*(uint64 *)szp);
-  uint sz = MAX_STACK_SIZE;
-  // cast fn to kthread_create first argument type
-  void *(*start_func)(void *) = (void *(*)(void *))fn;
-  
-  // cast stack to kthread_create second argument type
-  void *stack_ptr = (void *)stack;
+  argint(2, (int *)&stack_size);
 
-  return kthread_create(start_func, stack_ptr, sz);
+  return kthread_create((void *(*)(void *))fn, (void *)stack, stack_size);
   }
 
 uint64 sys_kthread_id(void)

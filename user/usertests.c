@@ -2586,8 +2586,8 @@ void uthread_a_start_func(void){
     printf("uthread_get_priority failed\n");
     exit(1);
   }
-  for(int i=0; i<10; i++){
-    sleep(10); // simulate work
+  for(int i=0; i<3; i++){
+    sleep(3); // simulate work
   }
   uthread_exit();
   printf("uthread_exit failed\n");
@@ -2595,8 +2595,8 @@ void uthread_a_start_func(void){
 }
 
 void uthread_b_start_func(void){
-  for(int i=0; i<10; i++){
-    sleep(10); // simulate work
+  for(int i=0; i<3; i++){
+    sleep(3); // simulate work
   }
   x = uthread_get_priority();
   uthread_exit();
